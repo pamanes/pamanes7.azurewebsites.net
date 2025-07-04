@@ -21,7 +21,8 @@ namespace Blog
             });
             //dotnet ef migrations add InitBlogSchema
             //dotnet ef database update
-            builder.Services.AddDbContext<MDBlogDbContext>(options => options.UseSqlite("Data Source=md.db")
+            //builder.Services.AddDbContext<MDBlogDbContext>(options => options.UseSqlite("Data Source=md.db"));
+            builder.Services.AddDbContext<MDBlogDbContext>(options => options.UseSqlite("Data Source=/home/data/md.db")
                 //.LogTo(Console.WriteLine, LogLevel.Information)
                 //.EnableSensitiveDataLogging()
             );
