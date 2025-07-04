@@ -54,6 +54,11 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Export escaped secret
+        run: |
+          echo "ADMIN_PASSWORDHASH=$(echo '${{ secrets.ADMIN_PASSWORDHASH }}')" >> $GITHUB_ENV
+          echo "Escaped password is: $ADMIN_PASSWORDHASH"          
+
       - name: Update App Service application settings
         uses: azure/CLI@v1
         with:
@@ -62,7 +67,7 @@ jobs:
             az webapp config appsettings set --name pamanes7 --resource-group blog-pamanes7 --settings \
               AdminAuth__Username=${{ secrets.ADMIN_USERNAME }} \
               ApplicationInsights__ConnectionString=${{ secrets.APPLICATIONINSIGHTS_CONNECTIONSTRING }} \
-              AdminAuth__PasswordHash=${{ env.ADMIN_PASSWORDHASH }}
+              AdminAuth__PasswordHash=$(echo '${{ env.ADMIN_PASSWORDHASH }}')
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
