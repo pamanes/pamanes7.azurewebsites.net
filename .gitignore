@@ -4,3 +4,5 @@ appsettings.*.json
 # Ignore build output directories
 bin/
 obj/
+
+.vs/
