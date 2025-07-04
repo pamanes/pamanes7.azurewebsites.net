@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-
 namespace Blog
 {
     public class Program
@@ -15,14 +14,14 @@ namespace Blog
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
             builder.Services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions()
             {
                 ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]
             });
             //dotnet ef migrations add InitBlogSchema
             //dotnet ef database update
-            //builder.Services.AddDbContext<MDBlogDbContext>(options => options.UseSqlite("Data Source=md.db"));
-            builder.Services.AddDbContext<MDBlogDbContext>(options => options.UseSqlite("Data Source=/home/data/md.db")
+            builder.Services.AddDbContext<MDBlogDbContext>(options => options.UseSqlite($"Data Source={builder.Configuration["DBPath"]}")
                 //.LogTo(Console.WriteLine, LogLevel.Information)
                 //.EnableSensitiveDataLogging()
             );
