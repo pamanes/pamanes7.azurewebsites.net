@@ -69,7 +69,7 @@ jobs:
             az webapp config appsettings set --name pamanes7 --resource-group blog-pamanes7 --settings \
               AdminAuth__Username=${{ secrets.ADMIN_USERNAME }} \
               ApplicationInsights__ConnectionString=${{ secrets.APPLICATIONINSIGHTS_CONNECTIONSTRING }} \
-              AdminAuth__PasswordHash=${{ secrets.ADMIN_PASSWORDHASH }}
+              AdminAuth__PasswordHash=$ESCAPED_PASSWORD
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
