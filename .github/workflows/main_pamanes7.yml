@@ -56,7 +56,7 @@ jobs:
 
       - name: Escape dollar signs in secret
         run: |
-          echo "${{ secrets.ADMIN_PASSWORDHASH }}" | sed 's/\$/\\$/g' > escaped_password.txt
+          echo "${{ secrets.ADMIN_PASSWORDHASH }}" > escaped_password.txt
           ESCAPED_PASSWORD=$(cat escaped_password.txt)
           echo "Escaped password: $ESCAPED_PASSWORD"          
 
