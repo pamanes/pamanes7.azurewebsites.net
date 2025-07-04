@@ -54,6 +54,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Update App Service application settings
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az webapp config appsettings set --name pamanes7 --resource-group blog-pamanes7 --settings \
+              AdminAuth__Username=${{ secrets.ADMIN_USERNAME }} \
+              AdminAuth__PasswordHash=${{ secrets.ADMIN_PASSWORDHASH }}          
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
