@@ -58,6 +58,7 @@ jobs:
         run: |
           echo "${{ secrets.ADMIN_PASSWORDHASH }}" > escaped_password.txt
           ESCAPED_PASSWORD=$(cat escaped_password.txt)
+          echo "ESCAPED_PASSWORD=$(cat escaped_password.txt)" >> $GITHUB_ENV
           echo "Escaped password: $ESCAPED_PASSWORD"              
 
       - name: Update App Service application settings
@@ -68,7 +69,7 @@ jobs:
             az webapp config appsettings set --name pamanes7 --resource-group blog-pamanes7 --settings \
               AdminAuth__Username=${{ secrets.ADMIN_USERNAME }} \
               ApplicationInsights__ConnectionString=${{ secrets.APPLICATIONINSIGHTS_CONNECTIONSTRING }} \
-              AdminAuth__PasswordHash='$(cat escaped_password.txt)'
+              AdminAuth__PasswordHash=$ESCAPED_PASSWORD
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
