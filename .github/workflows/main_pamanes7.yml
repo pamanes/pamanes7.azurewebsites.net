@@ -54,10 +54,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Escape dollar signs in secret
-        run: |
-          echo "ESCAPED_HASH=$(echo '${{ secrets.ADMIN_PASSWORDHASH }}' | sed 's/[$]/\\$/g')" >> $GITHUB_ENV
-
       - name: Update App Service application settings
         uses: azure/CLI@v1
         with:
@@ -66,7 +62,7 @@ jobs:
             az webapp config appsettings set --name pamanes7 --resource-group blog-pamanes7 --settings \
               AdminAuth__Username=${{ secrets.ADMIN_USERNAME }} \
               ApplicationInsights__ConnectionString=${{ secrets.APPLICATIONINSIGHTS_CONNECTIONSTRING }} \
-              AdminAuth__PasswordHash=${{ env.ESCAPED_HASH }}
+              AdminAuth__PasswordHash=${{ env.ADMIN_PASSWORDHASH }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
