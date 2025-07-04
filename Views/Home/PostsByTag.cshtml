@@ -1,0 +1,27 @@
+﻿@model PostsByTagViewModel
+
+@TranslationService.T(HttpContextAccessor.HttpContext, "Tags")
+<div class="mb-4">
+    @foreach (var tag in Model.Tags)
+    {
+        <a class="badge bg-primary text-decoration-none me-2" href="#@tag">@tag</a>
+    }
+</div>
+
+@foreach (var tag in Model.Tags)
+{
+    <section class="mb-5" id="@tag">
+        <h3>@tag</h3>
+        <ul>
+            @foreach (var post in Model.PostsByTag[tag])
+            {
+                <li>
+                    <small class="text-muted">(@post.Date.ToString("yyyy-MM-dd HH:mm zzz"))</small>
+                    <a href="/@(post.Path)">
+                        @post.Title
+                    </a>                    
+                </li>
+            }
+        </ul>
+    </section>
+}

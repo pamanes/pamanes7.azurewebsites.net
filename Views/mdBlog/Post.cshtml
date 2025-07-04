@@ -1,0 +1,28 @@
+﻿@using System.Text.Json
+@model MDBlogPost
+@{
+    ViewData["Title"] = "Markdown Preview";
+    var title = Model.Title as string;
+    var markdown = Model.Markdown as string;
+}
+@if (User.Identity?.IsAuthenticated ?? false)
+{
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-primary mb-3">@TranslationService.T(HttpContextAccessor.HttpContext, "Edit")</a>
+}
+<h1>@title</h1>
+<div id="preview"></div>
+@section Styles {
+<link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" />
+}
+@section Scripts {
+<script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.js"></script>
+<script>
+    const content = @Html.Raw(JsonSerializer.Serialize(markdown));
+    const viewer = new toastui.Editor({
+        el: document.querySelector('#preview'),
+        height: 'auto',
+        initialValue: content,
+        usageStatistics: false
+    });
+</script>
+}

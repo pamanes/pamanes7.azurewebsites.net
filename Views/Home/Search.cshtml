@@ -1,0 +1,104 @@
+﻿@model List<MDBlogPost>
+
+<h2>@TranslationService.T(HttpContextAccessor.HttpContext, "Search")</h2>
+
+<form method="get" class="mb-3">
+    <div class="input-group">
+        <input type="text" name="q" value="@ViewBag.Search" class="form-control" placeholder="@TranslationService.T(HttpContextAccessor.HttpContext, "Search")..." />
+        <button type="submit" class="btn btn-primary">@TranslationService.T(HttpContextAccessor.HttpContext, "Search")</button>
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <p>No posts found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var post in Model)
+            {
+                <tr>
+                    <td>
+                        <a href="/@(post.Path)">@post.Title</a>
+                        <div>
+                            @foreach (var tag in (post.Tags ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <a href="@Url.Action("PostsByTag", "Home")#@tag.Trim()"
+                                   class="badge bg-primary text-white me-1">
+                                    @tag.Trim()
+                                </a>
+                            }
+                        </div>
+                    </td>
+                    <td>@post.Date.ToString("yyyy-MM-dd HH:mm zzz")</td>
+                    <td>
+                        @if (User.Identity?.IsAuthenticated ?? false) 
+                        {
+                            <a href="@Url.Action("Edit")?id=@post.Id">Edit</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <nav>
+        <ul class="pagination">
+            @{
+                int currentPage = ViewBag.CurrentPage;
+                int totalPages = ViewBag.TotalPages;
+
+                int startPage = Math.Max(1, currentPage - 2);
+                int endPage = Math.Min(totalPages, currentPage + 2);
+
+                bool showLeftEllipsis = startPage > 2;
+                bool showRightEllipsis = endPage < totalPages - 1;
+            }
+
+            <!-- First page -->
+            @if (startPage > 1)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-action="Index" asp-route-page="1" asp-route-search="@ViewBag.Search">1</a>
+                </li>
+            }
+
+            <!-- Left ellipsis -->
+            @if (showLeftEllipsis)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+
+            <!-- Page numbers near current -->
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-search="@ViewBag.Search">@i</a>
+                </li>
+            }
+
+            <!-- Right ellipsis -->
+            @if (showRightEllipsis)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+
+            <!-- Last page -->
+            @if (endPage < totalPages)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-action="Index" asp-route-page="@totalPages" asp-route-search="@ViewBag.Search">@totalPages</a>
+                </li>
+            }
+        </ul>
+    </nav>
+
+}

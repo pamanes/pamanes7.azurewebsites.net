@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Blog</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Blog.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Blog</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">@TranslationService.T(HttpContextAccessor.HttpContext, "LatestPosts")</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Search">@TranslationService.T(HttpContextAccessor.HttpContext, "Search")</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="PostsByTag">@TranslationService.T(HttpContextAccessor.HttpContext, "Tags")</a>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Create">@TranslationService.T(HttpContextAccessor.HttpContext, "Create")</a>
+                            </li>
+                        }
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">@TranslationService.T(HttpContextAccessor.HttpContext, "Privacy")</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="d-flex ms-auto">
+                    @if (User.Identity?.IsAuthenticated ?? false)
+                    {
+                        <span class="navbar-text">
+                            @User.Identity.Name
+                        </span>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <div id="cookie-consent" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#222; color:#fff; padding:15px; text-align:center; z-index:1000;">
+        @TranslationService.T(HttpContextAccessor.HttpContext, "CookieConsentMessage")
+        <button onclick="acceptCookies()" style="margin-left:15px; padding:6px 12px;">@TranslationService.T(HttpContextAccessor.HttpContext, "CookieConsentOk")</button>
+    </div>
+
+    <script>
+        function acceptCookies() {
+            localStorage.setItem("cookie-consent", "accepted");
+            document.getElementById("cookie-consent").style.display = "none";
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            if (!localStorage.getItem("cookie-consent")) {
+                document.getElementById("cookie-consent").style.display = "block";
+            }
+        });
+    </script>
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2025 - Blog - <a asp-area="" asp-controller="Home" asp-action="Privacy">@TranslationService.T(HttpContextAccessor.HttpContext, "Privacy")</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

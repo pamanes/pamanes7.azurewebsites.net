@@ -1,0 +1,51 @@
+﻿@model MDBlogPost
+@section Styles {
+    <!-- Toast UI Editor CSS -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+}
+<h2>@TranslationService.T(HttpContextAccessor.HttpContext, "CreateMarkdownPost")</h2>
+<form method="post" asp-controller="Home" asp-action="Save">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label">@TranslationService.T(HttpContextAccessor.HttpContext, "Title")</label>
+        <input asp-for="Title" class="form-control" required />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Subtitle" class="form-label">@TranslationService.T(HttpContextAccessor.HttpContext, "Subtitle")</label>
+        <input asp-for="Subtitle" class="form-control" />
+        <span asp-validation-for="Subtitle" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Tags" class="form-label">@TranslationService.T(HttpContextAccessor.HttpContext, "TagsCommaSeparated")</label>
+        <input asp-for="Tags" class="form-control" />
+        <span asp-validation-for="Tags" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <div id="editor" style="margin-bottom: 1rem;"></div>
+        <textarea id="markdown" name="markdown" hidden>@Model.Markdown</textarea>
+        <span asp-validation-for="Markdown" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary" onclick="submitMarkdown()">@TranslationService.T(HttpContextAccessor.HttpContext, "Save")</button>
+</form>
+
+@section Scripts {
+    <!-- Toast UI Editor JS -->
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <script>
+        const editor = new toastui.Editor({
+            el: document.querySelector('#editor'),
+            height: '500px',
+            initialEditType: 'markdown',
+            previewStyle: 'vertical',
+            initialValue: document.getElementById('markdown').value,
+            usageStatistics: false
+        });
+
+        function submitMarkdown() {
+            const markdown = editor.getMarkdown();
+            document.getElementById('markdown').value = markdown;
+        }
+    </script>
+}
