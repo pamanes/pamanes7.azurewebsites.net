@@ -57,8 +57,8 @@ jobs:
       - name: Export escaped secret
         run: |
           echo "${{ secrets.ADMIN_PASSWORDHASH }}" > escaped_password.txt
-          ESCAPED_PASSWORD='$(cat escaped_password.txt)'
-          echo "Escaped password: $ESCAPED_PASSWORD"       
+          ESCAPED_PASSWORD=$(cat escaped_password.txt)
+          echo "Escaped password: $ESCAPED_PASSWORD"
 
       - name: Update App Service application settings
         uses: azure/CLI@v1
