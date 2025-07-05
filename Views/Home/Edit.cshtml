@@ -6,6 +6,7 @@
 
 <h2>@TranslationService.T(HttpContextAccessor.HttpContext, "EditMarkdownPost")</h2>
 <form method="post" asp-controller="Home" asp-action="Save">
+    @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <div class="mb-3">
         <label asp-for="Title" class="form-label">@TranslationService.T(HttpContextAccessor.HttpContext, "Title")</label>

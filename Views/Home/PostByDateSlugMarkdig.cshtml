@@ -1,4 +1,8 @@
 ﻿@using System.Linq
+@{
+    var deleteConfirmMessage = TranslationService.T(HttpContextAccessor.HttpContext, "DeleteConfirm");
+}
+
 @section Styles{
     <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css" rel="stylesheet" />
 }
@@ -7,7 +11,14 @@
     @if (User.Identity?.IsAuthenticated ?? false)
     {
         <a asp-controller="Home" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-primary mb-3">@TranslationService.T(HttpContextAccessor.HttpContext, "Edit")</a>
+        <form asp-controller="Home" asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('@deleteConfirmMessage');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-danger mb-3">
+                @TranslationService.T(HttpContextAccessor.HttpContext, "Delete")
+            </button>
+        </form>
     }
+
     <!-- Title -->
     <h1 class="display-4 fw-bold">@ViewBag.Title</h1>
 

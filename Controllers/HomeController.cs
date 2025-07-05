@@ -340,6 +340,28 @@ namespace Blog.Controllers
             ViewBag.Date = metadata.Date;
             return View(post);
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id, bool search, string q, [FromServices] MDBlogDbContext db)
+        {
+            if (!User.Identity?.IsAuthenticated ?? true)
+            {
+                return Forbid();
+            }
+
+            var post = await db.Posts.FindAsync(id);
+            if (post == null)
+            {
+                return NotFound();
+            }
+
+            db.Posts.Remove(post);
+            await db.SaveChangesAsync();
+            if (!search)
+                return RedirectToAction("Index");
+            else
+                return RedirectToAction("Search", new { q });
+        }
         public IActionResult Privacy()
         {
             return View();

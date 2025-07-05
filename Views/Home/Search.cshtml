@@ -1,5 +1,8 @@
 ﻿@model List<MDBlogPost>
-
+@{
+    var deleteConfirmMessage = TranslationService.T(HttpContextAccessor.HttpContext, "DeleteConfirm");
+    var searchQuery = Context.Request.Query["q"].ToString() ?? string.Empty;
+}
 <h2>@TranslationService.T(HttpContextAccessor.HttpContext, "Search")</h2>
 
 <form method="get" class="mb-3">
@@ -43,7 +46,16 @@ else
                     <td>
                         @if (User.Identity?.IsAuthenticated ?? false) 
                         {
-                            <a href="@Url.Action("Edit")?id=@post.Id">Edit</a>
+                            <a asp-controller="Home" asp-action="Edit" asp-route-id="@post.Id" class="btn btn-sm btn-primary me-2">
+                                @TranslationService.T(HttpContextAccessor.HttpContext, "Edit")
+                            </a>
+                            <form asp-controller="Home" asp-action="Delete" asp-route-id="@post.Id" asp-route-search="true" asp-route-q="@searchQuery" method="post" class="d-inline"
+                                  onsubmit="return confirm('@deleteConfirmMessage');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    @TranslationService.T(HttpContextAccessor.HttpContext, "Delete")
+                                </button>
+                            </form>
                         }
                     </td>
                 </tr>
