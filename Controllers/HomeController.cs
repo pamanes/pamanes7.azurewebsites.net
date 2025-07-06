@@ -107,6 +107,10 @@ namespace Blog.Controllers
             {
                 ModelState.AddModelError(nameof(post.Markdown), $"Date format in front matter is invalid: {ex.Message}");
             }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(nameof(post.Markdown), $"YAML front matter error: {ex.Message}");
+            }
 
             if (metadata != null && content != null && ModelState.IsValid)
             {
