@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Blog.Models
@@ -16,5 +17,16 @@ namespace Blog.Models
         public DateTime Date { get; set; } = DateTime.Now;
         public DateTime LastUpdated { get; set; } = DateTime.Now;
         public string Markdown { get; set; } = string.Empty;
+    }
+
+    public class MDBlogPostViewModel
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Subtitle { get; set; } = string.Empty;
+        public IEnumerable<string> Tags { get; set; }
+        public DateTime Date { get; set; } = DateTime.Now;
+        public DateTime LastUpdated { get; set; } = DateTime.Now;
+        public string HtmlContent { get; set; }
     }
 }

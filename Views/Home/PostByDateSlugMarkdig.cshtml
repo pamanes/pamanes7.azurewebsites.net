@@ -1,6 +1,8 @@
-﻿@using System.Linq
+﻿@model MDBlogPostViewModel
+@using System.Linq
 @{
     var deleteConfirmMessage = TranslationService.T(HttpContextAccessor.HttpContext, "DeleteConfirm");
+    //var tags = Model.Tags?.Split(',').Select(tag => tag.Trim()).ToList() ?? new List<string>();
 }
 
 @section Styles{
@@ -20,23 +22,23 @@
     }
 
     <!-- Title -->
-    <h1 class="display-4 fw-bold">@ViewBag.Title</h1>
+    <h1 class="display-4 fw-bold">@Model.Title</h1>
 
-    @if (!string.IsNullOrWhiteSpace(ViewBag.Subtitle))
+    @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
     {
-        <p class="fs-5 text-muted fst-italic">@ViewBag.Subtitle</p>
+        <p class="fs-5 text-muted fst-italic">@Model.Subtitle</p>
     }
 
     <!-- Posted On -->
     <p class="text-secondary mb-3">
-        @TranslationService.T(HttpContextAccessor.HttpContext, "PostedOn") @ViewBag.Date.ToString("yyyy-MM-dd")
+        @TranslationService.T(HttpContextAccessor.HttpContext, "PostedOn") @Model.Date.ToString("yyyy-MM-dd")
     </p>
 
     <!-- Tags -->
-    @if (ViewBag.Tags != null && ViewBag.Tags.Count > 0)
+    @if (Model.Tags != null && Model.Tags.Count() > 0)
     {
         <div class="mb-4">
-            @foreach (var tag in ViewBag.Tags)
+            @foreach (var tag in Model.Tags)
             {
                 <a href="@Url.Action("PostsByTag", "Home")#@tag.Trim()"
                    class="badge bg-primary text-white me-1">
@@ -48,7 +50,7 @@
 
     <!-- Content -->
     <div class="markdown-body">
-        @Html.Raw(ViewBag.HtmlContent)
+        @Html.Raw(Model.HtmlContent)
     </div>
 </div>
 

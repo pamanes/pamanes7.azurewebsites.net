@@ -6,6 +6,7 @@ using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -95,6 +96,7 @@ namespace Blog.Controllers
             
             FrontMatter metadata = null;
             string content = null;
+            //validate markdown
             try
             {
                 (metadata, content) = FrontMatterParser.Parse(post.Markdown ?? string.Empty);
@@ -118,7 +120,6 @@ namespace Blog.Controllers
                 {
                     ModelState.AddModelError(nameof(post.Markdown), "Front matter must include a 'title' field.");
                 }
-
                 
                 // Validate tags: only letters, numbers, and hyphens/underscores allowed
                 var invalidTags = post.Tags?.Split(",")
@@ -167,33 +168,55 @@ namespace Blog.Controllers
 
             var blogPost = post.Id > 0
                 ? await db.Posts.FindAsync(post.Id)
-                : new MDBlogPost { Date = DateTime.UtcNow };
+                : new MDBlogPost { Date = now };
 
             if (blogPost == null)
             {
                 return NotFound();
             }
 
-            blogPost.Title = post.Title.Trim();
-            blogPost.Slug = GenerateSlug(blogPost.Title);
-            blogPost.Subtitle = post.Subtitle?.Trim() ?? string.Empty;
+            blogPost.Title = post.Title.Trim();            
+            blogPost.Subtitle = post.Subtitle?.Trim();
             blogPost.Markdown = fullMarkdown;
-            blogPost.Tags = string.Join(",", post.Tags) ?? string.Empty;
+            blogPost.Tags = string.Join(",", post.Tags);
             blogPost.Date = post.Id == 0 ? now : blogPost.Date;
             blogPost.LastUpdated = now;
             var rawSlug = GenerateSlug(blogPost.Title);
-            var datePart = blogPost.Date.ToString("yyyy-MM-dd");
-            var fullSlug = $"{datePart}-{rawSlug}";
-            blogPost.Slug = fullSlug;
+            blogPost.Slug = $"{blogPost.Date:yyyy-MM-dd}-{rawSlug}";
             blogPost.Path = $"{blogPost.Date:yyyy/MM/dd}/{rawSlug}.html";
 
             if (post.Id == 0)
             {
                 db.Posts.Add(blogPost);
             }
+            bool errorOnSave = false;
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch(Exception ex) when (ex.InnerException is SqliteException && ((SqliteException)ex.InnerException).SqliteErrorCode == 19) // Unique constraint violation
+            {
+                ModelState.AddModelError(nameof(post.Title), "A post with this title already exists. Please choose a different title.");
+                errorOnSave = true;
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(nameof(post.Markdown), $"Save error: {ex.Message}");
+                errorOnSave = true;
+            }
 
-            await db.SaveChangesAsync();
-            var newId = blogPost.Id;
+            if (errorOnSave)
+            {
+                if (post.Id > 0)
+                {
+                    return View("Edit", post);
+                }
+                else
+                {
+                    return View("Create", post);
+                }
+            }
+
             return RedirectToRoute(
                 routeName: "PostByDateSlug",
                 routeValues: new
@@ -244,15 +267,6 @@ namespace Blog.Controllers
 
             //strip frontMatter
             var (metadata, body) = FrontMatterParser.Parse(editPost.Markdown);
-
-            StringBuilder frontMatter = new StringBuilder();
-            frontMatter.Append($"---\n");
-            frontMatter.Append($"title: {metadata.Title}\n");
-            frontMatter.Append($"subtitle: {metadata.Subtitle}\n");
-            frontMatter.Append($"tags:\n{string.Join("\n", metadata.Tags?.Select(t => $"- {t}") ?? Enumerable.Empty<string>())}\n");
-            frontMatter.Append($"date: {metadata.Date?.ToString("yyyy-MM-dd HH:mm zzz")}\n");
-            frontMatter.Append($"last-Updated: {metadata.LastUpdated?.ToString("yyyy-MM-dd HH:mm zzz")}\n");
-            frontMatter.Append($"---\n\n");
 
             editPost.Markdown = body;
             return View(editPost);
@@ -336,13 +350,18 @@ namespace Blog.Controllers
                     link.GetAttributes().AddPropertyIfNotExist("target", "_blank");
             }
 
-            var html = document.ToHtml(_markdownPipeline);
-            ViewBag.HtmlContent = html;
-            ViewBag.Title = metadata.Title;
-            ViewBag.Subtitle = metadata.Subtitle;
-            ViewBag.Tags = metadata.Tags;
-            ViewBag.Date = metadata.Date;
-            return View(post);
+            var viewModel = new MDBlogPostViewModel
+            {
+                Id = post.Id,
+                Title = metadata.Title,
+                Subtitle = metadata.Subtitle,
+                Tags = metadata.Tags ?? Enumerable.Empty<string>(),
+                Date = metadata.Date,
+                LastUpdated = metadata.LastUpdated,
+                HtmlContent = document.ToHtml(_markdownPipeline)
+            };
+
+            return View(viewModel);
         }
         [HttpPost]
         [ValidateAntiForgeryToken]

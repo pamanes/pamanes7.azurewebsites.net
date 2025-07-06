@@ -11,10 +11,10 @@ namespace Blog.Models
         public string Title { get; set; } = string.Empty;
         [YamlMember(Alias = "subtitle")]
         public string Subtitle { get; set; } = string.Empty;
-        public List<string> Tags { get; set; } = new();
-        public DateTime? Date { get; set; }
+        public IEnumerable<string> Tags { get; set; }
+        public DateTime Date { get; set; }
         [YamlMember(Alias = "last-updated")]
-        public DateTime? LastUpdated { get; set; }
+        public DateTime LastUpdated { get; set; }
     }
     public static class FrontMatterSerializer
     {

@@ -20,6 +20,10 @@ namespace Blog
             modelBuilder.Entity<MDBlogPost>()
                 .HasIndex(p => p.Tags);
 
+            modelBuilder.Entity<MDBlogPost>()
+                    .HasIndex(p => p.Path)
+                    .IsUnique();
+
         }
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {

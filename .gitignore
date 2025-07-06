@@ -6,3 +6,7 @@ bin/
 obj/
 
 .vs/
+
+# SQLite database files
+*.db-shm
+*.db-wal
