@@ -69,7 +69,7 @@ namespace Blog
             app.MapDefaultControllerRoute();
 
             app.MapControllerRoute(
-                name: "PostByDateSlug",
+                name: "PostByDateSlugMarkdig",
                 pattern: "{year:int}/{month:int}/{day:int}/{slug}.html",
                 defaults: new { controller = "Home", action = "PostByDateSlugMarkdig" });
 

@@ -70,17 +70,6 @@ namespace Blog.Controllers
         [Authorize]
         public IActionResult Create()
         {
-            //var now = DateTimeOffset.Now;
-
-            //var frontMatter =
-            //    "---\n" +
-            //    $"title:\n" +
-            //    "tags:\n" +
-            //    "- tag1\n" +
-            //    $"date: {now:yyyy-MM-dd HH:mm zzz}\n" +
-            //    $"last-updated: {now:yyyy-MM-dd HH:mm zzz}\n" +
-            //    "---\n\n";
-
             var post = new MDBlogPost
             {
                 Markdown = string.Empty
@@ -218,7 +207,7 @@ namespace Blog.Controllers
             }
 
             return RedirectToRoute(
-                routeName: "PostByDateSlug",
+                routeName: "PostByDateSlugMarkdig",
                 routeValues: new
                 {
                     year = blogPost.Date.Year,
@@ -303,21 +292,6 @@ namespace Blog.Controllers
             };
 
             return View(model);
-        }
-        [HttpGet]
-        public async Task<IActionResult> PostByDateSlug(int year, int month, int day, string slug, [FromServices] MDBlogDbContext db)
-        {
-            if (string.IsNullOrWhiteSpace(slug))
-                return NotFound();
-
-            var datePrefix = new DateTime(year, month, day).ToString("yyyy-MM-dd");
-            var fullSlug = $"{datePrefix}-{slug}";
-
-            var post = await db.Posts.FirstOrDefaultAsync(p => p.Slug == fullSlug);
-            if (post == null)
-                return NotFound();
-
-            return View("Post", post);
         }
         [HttpGet]
         public async Task<IActionResult> PostByDateSlugMarkdig(int year, int month, int day, string slug, [FromServices] MDBlogDbContext db)
