@@ -181,7 +181,7 @@ namespace Blog.Controllers
         
         public async Task<IActionResult> Post(int id)
         {
-            var post = _dataService.GetPostById(id);
+            var post = await _dataService.GetPostById(id);
             if (post == null) return NotFound();
             return View("Post", post);
         }
