@@ -19,7 +19,15 @@ namespace Blog.Models
         public string Markdown { get; set; } = string.Empty;
     }
 
-    public class MDBlogPostViewModel
+    public class MDBlogPostSearchResults
+    {
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; }
+        public string Search { get; set; }
+        public IEnumerable<MDBlogPost> Posts { get; set; } = new List<MDBlogPost>();
+    }
+
+public class MDBlogPostViewModel
     {
         public int Id { get; set; }
         public string Title { get; set; }

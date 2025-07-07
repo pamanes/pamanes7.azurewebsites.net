@@ -1,4 +1,4 @@
-﻿@model List<MDBlogPost>
+﻿@model MDBlogPostSearchResults
 @{
     var deleteConfirmMessage = TranslationService.T(HttpContextAccessor.HttpContext, "DeleteConfirm");
     var searchQuery = Context.Request.Query["q"].ToString() ?? string.Empty;
@@ -7,12 +7,12 @@
 
 <form method="get" class="mb-3">
     <div class="input-group">
-        <input type="text" name="q" value="@ViewBag.Search" class="form-control" placeholder="@TranslationService.T(HttpContextAccessor.HttpContext, "Search")..." />
+        <input type="text" name="q" value="@Model.Search" class="form-control" placeholder="@TranslationService.T(HttpContextAccessor.HttpContext, "Search")..." />
         <button type="submit" class="btn btn-primary">@TranslationService.T(HttpContextAccessor.HttpContext, "Search")</button>
     </div>
 </form>
 
-@if (!Model.Any())
+@if (!Model.Posts.Any())
 {
     <p>No posts found.</p>
 }
@@ -27,7 +27,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var post in Model)
+            @foreach (var post in Model.Posts)
             {
                 <tr>
                     <td>
@@ -65,8 +65,8 @@ else
     <nav>
         <ul class="pagination">
             @{
-                int currentPage = ViewBag.CurrentPage;
-                int totalPages = ViewBag.TotalPages;
+                int currentPage = Model.CurrentPage;
+                int totalPages = Model.TotalPages;
 
                 int startPage = Math.Max(1, currentPage - 2);
                 int endPage = Math.Min(totalPages, currentPage + 2);
@@ -79,7 +79,7 @@ else
             @if (startPage > 1)
             {
                 <li class="page-item">
-                    <a class="page-link" asp-action="Index" asp-route-page="1" asp-route-search="@ViewBag.Search">1</a>
+                    <a class="page-link" asp-action="Search" asp-route-page="1" asp-route-search="@Model.Search">1</a>
                 </li>
             }
 
@@ -93,7 +93,7 @@ else
             @for (int i = startPage; i <= endPage; i++)
             {
                 <li class="page-item @(i == currentPage ? "active" : "")">
-                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-search="@ViewBag.Search">@i</a>
+                    <a class="page-link" asp-action="Search" asp-route-page="@i" asp-route-search="@Model.Search">@i</a>
                 </li>
             }
 
@@ -107,7 +107,7 @@ else
             @if (endPage < totalPages)
             {
                 <li class="page-item">
-                    <a class="page-link" asp-action="Index" asp-route-page="@totalPages" asp-route-search="@ViewBag.Search">@totalPages</a>
+                    <a class="page-link" asp-action="Search" asp-route-page="@totalPages" asp-route-search="@Model.Search">@totalPages</a>
                 </li>
             }
         </ul>

@@ -6,16 +6,14 @@ using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using YamlDotNet.Serialization;
 
 namespace Blog.Controllers
 {
@@ -23,49 +21,27 @@ namespace Blog.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly MarkdownPipeline _markdownPipeline;
+        private IDeserializer _frontMatterDeserializer;
+        private IDataService _dataService;
 
-        public HomeController(ILogger<HomeController> logger, MarkdownPipeline markdownPipeline)
+        public HomeController(ILogger<HomeController> logger, MarkdownPipeline markdownPipeline, IDeserializer frontMatterDeserializer, IDataService dataService)
         {
             _logger = logger;
             _markdownPipeline = markdownPipeline;
+            _frontMatterDeserializer = frontMatterDeserializer;
+            _dataService = dataService;
         }
 
-        public async Task<IActionResult> Index([FromServices] MDBlogDbContext db)
+        public async Task<IActionResult> Index()
         {
-            var latestPosts = await db.Posts
-                .OrderByDescending(p => p.Date)
-                .Take(10)
-                .ToListAsync();
-
+            var latestPosts = await _dataService.GetLatestPosts();
             return View(latestPosts);
         }
 
-        public async Task<IActionResult> Search([FromServices] MDBlogDbContext db, string q = null, int page = 1)
+        public async Task<IActionResult> Search(string q = null, int page = 1)
         {
-            const int pageSize = 10;
-
-            // Filter posts by search if provided
-            var query = db.Posts.AsQueryable();
-            var search = q?.ToLower();
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                query = query.Where(p => EF.Functions.Like(p.Title, $"%{search}%") || EF.Functions.Like(p.Tags, $"%{search}%") || EF.Functions.Like(p.Markdown, $"%{search}%"));
-            }
-
-            var totalPosts = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
-
-            var posts = await query
-                .OrderByDescending(p => p.Date)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            ViewBag.CurrentPage = page;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.Search = q;
-
-            return View(posts);
+            var searchResulsts = await _dataService.Search(q, page);
+            return View(searchResulsts);
         }
         [Authorize]
         public IActionResult Create()
@@ -80,7 +56,7 @@ namespace Blog.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Save(MDBlogPost post, [FromServices] MDBlogDbContext db)
+        public async Task<IActionResult> Save(MDBlogPost post)
         {
             
             FrontMatter metadata = null;
@@ -88,19 +64,11 @@ namespace Blog.Controllers
             //validate markdown
             try
             {
-                (metadata, content) = FrontMatterParser.Parse(post.Markdown ?? string.Empty);
-            }
-            catch (YamlDotNet.Core.YamlException ex)
-            {
-                ModelState.AddModelError(nameof(post.Markdown), $"YAML front matter is invalid: {ex.Message} {ex.InnerException?.Message}");
-            }
-            catch (FormatException ex)
-            {
-                ModelState.AddModelError(nameof(post.Markdown), $"Date format in front matter is invalid: {ex.Message}");
+                (metadata, content) = _frontMatterDeserializer.Parse(post.Markdown ?? string.Empty);
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError(nameof(post.Markdown), $"YAML front matter error: {ex.Message}");
+                ModelState.AddModelError(nameof(post.Markdown), $"Error: {ex.Message}");
             }
 
             if (metadata != null && content != null && ModelState.IsValid)
@@ -155,46 +123,39 @@ namespace Blog.Controllers
             // Combine
             string fullMarkdown = $"{yaml}\n{post.Markdown?.Trim()}\n";
 
-            var blogPost = post.Id > 0
-                ? await db.Posts.FindAsync(post.Id)
-                : new MDBlogPost { Date = now };
-
-            if (blogPost == null)
-            {
-                return NotFound();
-            }
-
+            var blogPost = new MDBlogPost();
+            blogPost.Id = post.Id;
             blogPost.Title = post.Title.Trim();            
             blogPost.Subtitle = post.Subtitle?.Trim();
             blogPost.Markdown = fullMarkdown;
             blogPost.Tags = string.Join(",", post.Tags);
             blogPost.Date = post.Id == 0 ? now : blogPost.Date;
             blogPost.LastUpdated = now;
-            var rawSlug = GenerateSlug(blogPost.Title);
+            var rawSlug = MarkdownHelperFunctions.GenerateSlug(blogPost.Title);
             blogPost.Slug = $"{blogPost.Date:yyyy-MM-dd}-{rawSlug}";
             blogPost.Path = $"{blogPost.Date:yyyy/MM/dd}/{rawSlug}.html";
 
-            if (post.Id == 0)
-            {
-                db.Posts.Add(blogPost);
-            }
-            bool errorOnSave = false;
             try
             {
-                await db.SaveChangesAsync();
-            }
-            catch(Exception ex) when (ex.InnerException is SqliteException && ((SqliteException)ex.InnerException).SqliteErrorCode == 19) // Unique constraint violation
-            {
-                ModelState.AddModelError(nameof(post.Title), "A post with this title already exists. Please choose a different title.");
-                errorOnSave = true;
+                if (post.Id > 0)
+                {
+                    blogPost = await _dataService.EditPost(blogPost);
+                    if (blogPost == null)
+                    {
+                        ModelState.AddModelError(nameof(post.Markdown), "Post not found or could not be updated.");
+                    }
+                }
+                else
+                {
+                    blogPost = await _dataService.CreatePost(blogPost);
+                }
             }
             catch (Exception ex)
             {
                 ModelState.AddModelError(nameof(post.Markdown), $"Save error: {ex.Message}");
-                errorOnSave = true;
             }
 
-            if (errorOnSave)
+            if (!ModelState.IsValid)
             {
                 if (post.Id > 0)
                 {
@@ -217,84 +178,39 @@ namespace Blog.Controllers
                 }
             );
         }
-        private static string GenerateSlug(string title)
+        
+        public async Task<IActionResult> Post(int id)
         {
-            if (string.IsNullOrWhiteSpace(title))
-                return string.Empty;
-
-            // Normalize to decompose accents (e.g., "título" → "título")
-            string normalized = title.Normalize(NormalizationForm.FormD);
-
-            // Remove diacritics (accents)
-            var sb = new StringBuilder();
-            foreach (var c in normalized)
-            {
-                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
-                {
-                    sb.Append(c);
-                }
-            }
-
-            // Convert to lowercase and replace non-alphanumeric with hyphens
-            string cleaned = Regex.Replace(sb.ToString().ToLowerInvariant(), @"[^a-z0-9]+", "-");
-
-            // Trim leading/trailing hyphens
-            return cleaned.Trim('-');
-        }
-        public async Task<IActionResult> Post(int id, [FromServices] MDBlogDbContext db)
-        {
-            var post = await db.Posts.FindAsync(id);
+            var post = _dataService.GetPostById(id);
             if (post == null) return NotFound();
             return View("Post", post);
         }
         [Authorize]
-        public async Task<IActionResult> Edit(int id, [FromServices] MDBlogDbContext db)
+        public async Task<IActionResult> Edit(int id)
         {
-            var editPost = await db.Posts.FindAsync(id);
+            var editPost = await _dataService.GetPostById(id);
             if (editPost == null) return NotFound();
 
             //strip frontMatter
-            var (metadata, body) = FrontMatterParser.Parse(editPost.Markdown);
+            var (metadata, body) = _frontMatterDeserializer.Parse(editPost.Markdown);
 
             editPost.Markdown = body;
             return View(editPost);
         }
-        public async Task<IActionResult> PostsByTag([FromServices] MDBlogDbContext db)
+        public async Task<IActionResult> PostsByTag()
         {
-            var posts = await db.Posts
-                .OrderByDescending(p => p.Date)
-                .ToListAsync();
-
-            // Extract unique tags
-            var allTags = posts
-                .SelectMany(p => (p.Tags ?? "")
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(t => t.Trim()))
-                .Distinct()
-                .OrderBy(t => t)
-                .ToList();
-
-            // Group posts by each tag
-            var postsByTag = allTags.ToDictionary(
-                tag => tag,
-                tag => posts.Where(p =>
-                    (p.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(t => t.Trim())
-                        .Contains(tag))
-                    .ToList()
-            );
+            (IEnumerable<string> tags, Dictionary<string, List<MDBlogPost>> postsByTag) = await _dataService.GetPostsByTag();
 
             var model = new PostsByTagViewModel
             {
-                Tags = allTags,
+                Tags = tags,
                 PostsByTag = postsByTag
             };
 
             return View(model);
         }
         [HttpGet]
-        public async Task<IActionResult> PostByDateSlugMarkdig(int year, int month, int day, string slug, [FromServices] MDBlogDbContext db)
+        public async Task<IActionResult> PostByDateSlugMarkdig(int year, int month, int day, string slug)
         {
             if (string.IsNullOrWhiteSpace(slug))
                 return NotFound();
@@ -302,12 +218,12 @@ namespace Blog.Controllers
             var datePrefix = new DateTime(year, month, day).ToString("yyyy-MM-dd");
             var fullSlug = $"{datePrefix}-{slug}";
 
-            var post = await db.Posts.FirstOrDefaultAsync(p => p.Slug == fullSlug);
+            var post = await _dataService.GetPostByFullSlug(fullSlug);
             if (post == null)
                 return NotFound();
 
             //strip frontMatter
-            var (metadata, body) = FrontMatterParser.Parse(post.Markdown);
+            var (metadata, body) = _frontMatterDeserializer.Parse(post.Markdown);
 
             //fix links
             MarkdownDocument document = Markdown.Parse(body, _markdownPipeline);
@@ -339,21 +255,14 @@ namespace Blog.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id, bool search, string q, [FromServices] MDBlogDbContext db)
+        public async Task<IActionResult> Delete(int id, bool search, string q)
         {
             if (!User.Identity?.IsAuthenticated ?? true)
             {
                 return Forbid();
             }
 
-            var post = await db.Posts.FindAsync(id);
-            if (post == null)
-            {
-                return NotFound();
-            }
-
-            db.Posts.Remove(post);
-            await db.SaveChangesAsync();
+            await _dataService.DeletePostById(id);
             if (!search)
                 return RedirectToAction("Index");
             else

@@ -1,3 +1,4 @@
+using Blog.Services;
 using Markdig;
 using Markdig.Extensions.AutoIdentifiers;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using YamlDotNet.Serialization;
 
 namespace Blog
 {
@@ -31,6 +33,14 @@ namespace Blog
                 //.LogTo(Console.WriteLine, LogLevel.Information)
                 //.EnableSensitiveDataLogging()
             );
+            builder.Services.AddScoped<IDataService>(provider => { return new DataService(provider.GetRequiredService<MDBlogDbContext>()); });
+            builder.Services.AddSingleton(provider =>
+            {
+                return new DeserializerBuilder()
+                    .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
+                    .IgnoreUnmatchedProperties()
+                    .Build();
+            });
             builder.Services.AddSingleton(provider =>
             {
                 return new MarkdownPipelineBuilder()
