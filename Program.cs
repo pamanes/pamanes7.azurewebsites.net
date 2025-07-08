@@ -33,7 +33,7 @@ namespace Blog
                 //.LogTo(Console.WriteLine, LogLevel.Information)
                 //.EnableSensitiveDataLogging()
             );
-            builder.Services.AddScoped<IDataService>(provider => { return new DataService(provider.GetRequiredService<MDBlogDbContext>()); });
+            builder.Services.AddScoped<IPostService>(provider => { return new PostService(provider.GetRequiredService<MDBlogDbContext>()); });
             builder.Services.AddSingleton(provider =>
             {
                 return new DeserializerBuilder()

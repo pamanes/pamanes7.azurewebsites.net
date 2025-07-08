@@ -4,6 +4,7 @@ using Markdig;
 using Markdig.Renderers.Html;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -19,28 +20,26 @@ namespace Blog.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
         private readonly MarkdownPipeline _markdownPipeline;
         private IDeserializer _frontMatterDeserializer;
-        private IDataService _dataService;
+        private IPostService _postService;
 
-        public HomeController(ILogger<HomeController> logger, MarkdownPipeline markdownPipeline, IDeserializer frontMatterDeserializer, IDataService dataService)
+        public HomeController(MarkdownPipeline markdownPipeline, IDeserializer frontMatterDeserializer, IPostService postService)
         {
-            _logger = logger;
             _markdownPipeline = markdownPipeline;
             _frontMatterDeserializer = frontMatterDeserializer;
-            _dataService = dataService;
+            _postService = postService;
         }
 
         public async Task<IActionResult> Index()
         {
-            var latestPosts = await _dataService.GetLatestPosts();
+            var latestPosts = await _postService.GetLatestPosts();
             return View(latestPosts);
         }
 
         public async Task<IActionResult> Search(string q = null, int page = 1)
         {
-            var searchResulsts = await _dataService.Search(q, page);
+            var searchResulsts = await _postService.Search(q, page);
             return View(searchResulsts);
         }
         [Authorize]
@@ -77,7 +76,7 @@ namespace Blog.Controllers
                 {
                     ModelState.AddModelError(nameof(post.Markdown), "Front matter must include a 'title' field.");
                 }
-                
+                post.Tags = post.Tags?.Trim().TrimStart(',').TrimEnd(',');
                 // Validate tags: only letters, numbers, and hyphens/underscores allowed
                 var invalidTags = post.Tags?.Split(",")
                     .Select(t => t.Trim())
@@ -87,7 +86,7 @@ namespace Blog.Controllers
                 if (invalidTags?.Any() ?? false)
                 {
                     var bad = string.Join(", ", invalidTags);
-                    ModelState.AddModelError(nameof(post.Markdown), $"Invalid tag(s): {bad}. Only letters, digits, hyphens, and underscores are allowed.");
+                    ModelState.AddModelError(nameof(post.Tags), $"Invalid tag(s): {bad}. Only letters, digits, hyphens, and underscores are allowed.");
                 }
             }
             
@@ -103,51 +102,16 @@ namespace Blog.Controllers
                 }
             }
 
-            // Build front matter
-            var now = DateTime.Now;
-            var tagsList = post.Tags?
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(t => t.Trim())
-                .ToList();
-
-            var fm = new FrontMatter
-            {
-                Title = post.Title.Trim(),
-                Subtitle = post.Subtitle?.Trim(),
-                Tags = tagsList,
-                Date = now,
-                LastUpdated = now
-            };
-            string yaml = FrontMatterSerializer.Serialize(fm);
-
-            // Combine
-            string fullMarkdown = $"{yaml}\n{post.Markdown?.Trim()}\n";
-
-            var blogPost = new MDBlogPost();
-            blogPost.Id = post.Id;
-            blogPost.Title = post.Title.Trim();            
-            blogPost.Subtitle = post.Subtitle?.Trim();
-            blogPost.Markdown = fullMarkdown;
-            blogPost.Tags = string.Join(",", post.Tags);
-            blogPost.Date = post.Id == 0 ? now : blogPost.Date;
-            blogPost.LastUpdated = now;
-            var rawSlug = MarkdownHelperFunctions.GenerateSlug(blogPost.Title);
-            blogPost.Slug = $"{blogPost.Date:yyyy-MM-dd}-{rawSlug}";
-            blogPost.Path = $"{blogPost.Date:yyyy/MM/dd}/{rawSlug}.html";
+            post.Title = post.Title.Trim();
+            post.Subtitle = post.Subtitle?.Trim();
+            post.Markdown = post.Markdown?.Trim();
 
             try
             {
-                if (post.Id > 0)
+                post = await _postService.SavePost(post);
+                if (post == null)
                 {
-                    blogPost = await _dataService.EditPost(blogPost);
-                    if (blogPost == null)
-                    {
-                        ModelState.AddModelError(nameof(post.Markdown), "Post not found or could not be updated.");
-                    }
-                }
-                else
-                {
-                    blogPost = await _dataService.CreatePost(blogPost);
+                    ModelState.AddModelError(nameof(post.Markdown), "Post not found or could not be updated.");
                 }
             }
             catch (Exception ex)
@@ -171,24 +135,24 @@ namespace Blog.Controllers
                 routeName: "PostByDateSlugMarkdig",
                 routeValues: new
                 {
-                    year = blogPost.Date.Year,
-                    month = blogPost.Date.Month.ToString("D2"),
-                    day = blogPost.Date.Day.ToString("D2"),
-                    slug = rawSlug
+                    year = post.Date.Year,
+                    month = post.Date.Month.ToString("D2"),
+                    day = post.Date.Day.ToString("D2"),
+                    slug = MarkdownHelperFunctions.GenerateSlug(post.Title)
                 }
             );
         }
         
         public async Task<IActionResult> Post(int id)
         {
-            var post = await _dataService.GetPostById(id);
+            var post = await _postService.GetPostById(id);
             if (post == null) return NotFound();
             return View("Post", post);
         }
         [Authorize]
         public async Task<IActionResult> Edit(int id)
         {
-            var editPost = await _dataService.GetPostById(id);
+            var editPost = await _postService.GetPostById(id);
             if (editPost == null) return NotFound();
 
             //strip frontMatter
@@ -199,7 +163,7 @@ namespace Blog.Controllers
         }
         public async Task<IActionResult> PostsByTag()
         {
-            (IEnumerable<string> tags, Dictionary<string, List<MDBlogPost>> postsByTag) = await _dataService.GetPostsByTag();
+            (IEnumerable<string> tags, Dictionary<string, List<MDBlogPost>> postsByTag) = await _postService.GetPostsByTag();
 
             var model = new PostsByTagViewModel
             {
@@ -218,7 +182,7 @@ namespace Blog.Controllers
             var datePrefix = new DateTime(year, month, day).ToString("yyyy-MM-dd");
             var fullSlug = $"{datePrefix}-{slug}";
 
-            var post = await _dataService.GetPostByFullSlug(fullSlug);
+            var post = await _postService.GetPostByFullSlug(fullSlug);
             if (post == null)
                 return NotFound();
 
@@ -262,7 +226,7 @@ namespace Blog.Controllers
                 return Forbid();
             }
 
-            await _dataService.DeletePostById(id);
+            await _postService.DeletePostById(id);
             if (!search)
                 return RedirectToAction("Index");
             else

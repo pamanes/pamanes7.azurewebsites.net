@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Blog.Services
 {
-    public interface IDataService
+    public interface IPostService
     {
         Task<IEnumerable<MDBlogPost>> GetLatestPosts();
         Task<MDBlogPostSearchResults> Search(string search, int page = 1);
@@ -15,13 +15,12 @@ namespace Blog.Services
         Task DeletePostById(int id);
         Task<(IEnumerable<string>, Dictionary<string, List<MDBlogPost>>)> GetPostsByTag();
         Task<MDBlogPost> GetPostByFullSlug(string fullSlug);
-        Task<MDBlogPost> EditPost(MDBlogPost post);
-        Task<MDBlogPost> CreatePost(MDBlogPost post);
+        Task<MDBlogPost> SavePost(MDBlogPost post);
     }
-    public class DataService : IDataService
+    public class PostService : IPostService
     {
         private MDBlogDbContext _db;
-        public DataService(MDBlogDbContext db)
+        public PostService(MDBlogDbContext db)
         {
             _db = db;
         }
@@ -68,30 +67,50 @@ namespace Blog.Services
                 await _db.SaveChangesAsync();
             }
         }
-        public async Task<MDBlogPost> CreatePost(MDBlogPost post)
+        public async Task<MDBlogPost> SavePost(MDBlogPost post)
         {
-            _db.Posts.Add(post);
-            await _db.SaveChangesAsync();            
-            return post;
-        }
-        public async Task<MDBlogPost> EditPost(MDBlogPost post)
-        {
-            var postEdit = await _db.Posts.FindAsync(post.Id);
-            if(postEdit == null)
+            MDBlogPost postToSave;
+            bool isNew = post.Id == 0;
+
+            if (isNew)
             {
-                return null;
+                postToSave = post;
             }
-            postEdit.Title = post.Title;
-            postEdit.Subtitle = post.Subtitle;
-            postEdit.Markdown = post.Markdown;
-            postEdit.Tags = post.Tags;
-            postEdit.Date = post.Date;
-            postEdit.LastUpdated = post.LastUpdated;
-            postEdit.Slug = post.Slug;
-            postEdit.Path = post.Path;
+            else
+            {
+                postToSave = await _db.Posts.FindAsync(post.Id);
+                if (postToSave == null)
+                    return null;
+
+                postToSave.LastUpdated = post.LastUpdated;
+            }
+
+            var fm = new FrontMatter
+            {
+                Title = post.Title.Trim(),
+                Subtitle = post.Subtitle?.Trim(),
+                Tags = post.Tags?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).ToList(),
+                Date = postToSave.Date,
+                LastUpdated = post.LastUpdated
+            };
+
+            string yaml = FrontMatterSerializer.Serialize(fm);
+            var rawSlug = MarkdownHelperFunctions.GenerateSlug(post.Title);
+
+            postToSave.Title = post.Title.Trim();
+            postToSave.Subtitle = post.Subtitle?.Trim();
+            postToSave.Markdown = $"{yaml}\n{post.Markdown?.Trim()}\n";
+            postToSave.Tags = post.Tags;
+            postToSave.Slug = $"{postToSave.Date:yyyy-MM-dd}-{rawSlug}";
+            postToSave.Path = $"{postToSave.Date:yyyy/MM/dd}/{rawSlug}.html";
+
+            if (isNew)
+                _db.Posts.Add(postToSave);
+
             await _db.SaveChangesAsync();
-            return post;
+            return postToSave;
         }
+
         public async Task<MDBlogPost> GetPostById(int id)
         {
             var post = await _db.Posts.FindAsync(id);
