@@ -6,7 +6,11 @@
 }
 
 @section Styles{
-
+<style>
+        .link-hover-primary:hover {
+            color: var(--bs-primary) !important;
+        }
+</style>
 }
 
 <h1>@TranslationService.T(HttpContextAccessor.HttpContext, "LatestPosts")</h1>
@@ -14,8 +18,8 @@
 @foreach (var post in Model)
 {
     <div class="mb-5 border-bottom pb-3">
-        <h2 class="display-5 fw-bold text-body-emphasis mb-3">
-            <a href="@post.Path">
+        <h2 class="h3 fw-semibold mb-2">
+            <a href="@post.Path" class="text-decoration-none text-reset link-hover-primary">
                 @post.Title
             </a>
         </h2>
