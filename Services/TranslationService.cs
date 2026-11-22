@@ -98,7 +98,18 @@ namespace Blog.Services
 
         public static string T(HttpContext httpContext, string key)
         {
-            var lang = httpContext.Request.Headers["Accept-Language"].ToString()?.Split(',').FirstOrDefault()?.Trim().Substring(0, 2) ?? "en";
+            var acceptLanguage = httpContext?.Request.Headers["Accept-Language"]
+                .ToString();
+
+            var preferredLanguage = acceptLanguage?
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault()?
+                .Trim();
+
+            var lang = !string.IsNullOrEmpty(preferredLanguage)
+                && preferredLanguage.Length >= 2
+                    ? preferredLanguage.Substring(0, 2).ToLowerInvariant()
+                    : "en";
 
             if (!_translations.TryGetValue(lang, out var langDict))
             {
@@ -108,5 +119,4 @@ namespace Blog.Services
             return langDict.TryGetValue(key, out var value) ? value : key;
         }
     }
-
 }
